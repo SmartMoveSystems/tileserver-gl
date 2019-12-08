@@ -19,6 +19,7 @@
     "test": "mocha test/**.js --timeout 10000"
   },
   "dependencies": {
+    "@mapbox/geo-viewport": "^0.4.0",    
     "@mapbox/mapbox-gl-native": "4.0.0",
     "@mapbox/mbtiles": "0.10.0",
     "@mapbox/sphericalmercator": "1.1.0",
