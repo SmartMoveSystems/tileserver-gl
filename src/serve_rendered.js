@@ -27,6 +27,9 @@ var utils = require('./utils');
 
 var FLOAT_PATTERN = '[+-]?(?:\\d+|\\d+\.?\\d+)';
 
+let annotationSize = 10;
+let annotationFont = '14px Arial';
+
 var getScale = function(scale) {
   return (scale || '@1x').slice(1, 2) | 0;
 };
@@ -525,7 +528,7 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
     var path = [];
     pathParts.forEach(function(pair) {
       var pairParts = pair.split(',');
-      if (pairParts.length == 2) {
+      if (pairParts.length >= 2) {
         var pair;
         if (query.latlng == '1' || query.latlng == 'true') {
           pair = [+(pairParts[1]), +(pairParts[0])];
@@ -534,6 +537,13 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
         }
         if (transformer) {
           pair = transformer(pair);
+        }
+        if (pairParts.length == 4) {
+          // extract annotation
+          var text = pairParts[2];
+          var color = pairParts[3].toLowerCase();
+          pair.push(text);
+          pair.push(color);
         }
         path.push(pair);
       }
@@ -593,8 +603,35 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
       ctx.stroke();
     }
 
+    path.forEach(function(pair) {
+      if (pair.length == 4) {
+        var px = precisePx(pair, z);
+        var x = parseInt(px[0]);
+        var y = parseInt(px[1]);
+        var text = pair[2];
+        var color = pair[3];
+        drawAnnotation(ctx, x, y, text, color);
+      }
+    });
+
     return canvas.toBuffer();
   };
+
+  var drawAnnotation = function(ctx, x, y, text, color) {
+    ctx.beginPath();
+    ctx.arc(x, y, annotationSize, 0, Math.PI * 2, false);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x, y, annotationSize / 3, 0, Math.PI * 2, false);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fill();
+    
+    ctx.font = annotationFont;
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y - annotationSize * 2);
+  }
 
   var calcZForBBox = function(bbox, w, h, query) {
     var z = 25;
