@@ -392,7 +392,7 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
 
   var respondImage = function(z, lon, lat, bearing, pitch,
                               width, height, scale, format, res, next,
-                              opt_overlay) {
+                              opt_overlay, bounds) {
     if (Math.abs(lon) > 180 || Math.abs(lat) > 85.06 ||
         lon != lon || lat != lat) {
       return res.status(400).send('Invalid center');
@@ -487,10 +487,22 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
             return res.status(404).send('Not found');
           }
 
-          res.set({
-            'Last-Modified': lastModified,
-            'Content-Type': 'image/' + format
-          });
+          if (bounds && bounds.length == 4) {
+            res.set({
+              'Last-Modified': lastModified,            
+              'Content-Type': 'image/' + format,
+              'Top-Latitude': bounds[3],
+              'Top-Longitude': bounds[2],
+              'Bottom-Latitude': bounds[1],
+              'Bottom-Longitude': bounds[0]
+            });
+          } else {
+            res.set({
+              'Last-Modified': lastModified,            
+              'Content-Type': 'image/' + format
+            });
+          }
+
           return res.status(200).send(buffer);
         });
       });
@@ -801,8 +813,10 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
       var overlay = renderOverlay(z, x, y, bearing, pitch, w, h, scale,
                                   path, req.query);
 
+      var bounds = geoViewport.bounds([x,y], z, [w, h])
+
       return respondImage(z, x, y, bearing, pitch, w, h, scale, format,
-                          res, next, overlay);
+                          res, next, overlay, bounds);
     });
 
     var boundsPattern = 'bounds';
