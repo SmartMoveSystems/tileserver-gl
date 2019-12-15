@@ -492,9 +492,9 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
               'Last-Modified': lastModified,            
               'Content-Type': 'image/' + format,
               'Top-Latitude': bounds[3],
-              'Top-Longitude': bounds[2],
+              'Top-Longitude': bounds[0],
               'Bottom-Latitude': bounds[1],
-              'Bottom-Longitude': bounds[0]
+              'Bottom-Longitude': bounds[2]
             });
           } else {
             res.set({
@@ -886,7 +886,12 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
 
       var bounds = geoViewport.bounds([x,y], z, [w, h])
 
-      return res.json({ bounds })
+      var northEastBounds = [bounds[3], bounds[0]];
+      var southWestBounds = [bounds[1], bounds[2]];
+
+      var autoBounds = {northEastBounds, southWestBounds};
+
+      return res.json({ autoBounds })
     });
   }
 
