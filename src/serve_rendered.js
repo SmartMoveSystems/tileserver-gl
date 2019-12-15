@@ -615,8 +615,18 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
       ctx.stroke();
     }
 
-    path.forEach(function(pair) {
-      if (pair.length == 4) {
+    var pathDirection = query.pathDirection !== undefined ? parseInt(query.pathDirection) : -1;
+
+    path.forEach(function(pair, index) {
+      if (index == 0 && pathDirection >= 0) {
+        // the query contains a path direction
+        var px = precisePx(pair, z);
+        var x = parseInt(px[0]);
+        var y = parseInt(px[1]);
+
+        drawDirection(ctx, x, y, pathDirection);      
+      } else if (pair.length == 4) {
+        // the pair contains annoation details
         var px = precisePx(pair, z);
         var x = parseInt(px[0]);
         var y = parseInt(px[1]);
@@ -643,6 +653,25 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
     ctx.font = annotationFont;
     ctx.fillStyle = color;
     ctx.fillText(text, x, y - annotationSize * 2);
+  }
+
+  function drawDirection(ctx, x, y, pathDirection) {
+    ctx.translate(x,y);
+    ctx.rotate((pathDirection) * Math.PI / 180);
+    ctx.translate(-16,-16);
+    ctx.beginPath();
+    ctx.moveTo(-0, 31.97);
+    ctx.bezierCurveTo(-0, 31.88, 16, -0.03, 16.03, 0);
+    ctx.bezierCurveTo(16.12, 0.11, 32.03, 31.98, 32, 31.99);
+    ctx.bezierCurveTo(31.98, 31.99, 28.37, 30.45, 23.99, 28.55);
+    ctx.lineTo(16.01, 25.09);
+    ctx.lineTo(8.04, 28.55);
+    ctx.bezierCurveTo(3.66, 30.45, 0.06, 32, 0.04, 32);
+    ctx.bezierCurveTo(0.02, 32, -0, 31.99, -0, 31.97);
+    ctx.closePath();
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.restore();
   }
 
   var calcZForBBox = function(bbox, w, h, query) {
