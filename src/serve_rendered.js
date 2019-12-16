@@ -886,8 +886,8 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
 
       var bounds = geoViewport.bounds([x,y], z, [w, h])
 
-      var northEastBounds = [bounds[3], bounds[0]];
-      var southWestBounds = [bounds[1], bounds[2]];
+      var northWestBounds = [bounds[3], bounds[0]];
+      var southEastBounds = [bounds[1], bounds[2]];
 
       var autoBounds = {northEastBounds, southWestBounds};
 
