@@ -557,6 +557,16 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
           pair.push(text);
           pair.push(color);
         }
+        if (pairParts.length == 5) {
+          // extract annotation
+          var text = pairParts[2];
+          var color = pairParts[3].toLowerCase();
+          var lineColor = pairParts[4].toLowerCase();
+          pair.push(text);
+          pair.push(color);
+          pair.push(lineColor);
+        }
+
         path.push(pair);
       }
     });
@@ -603,6 +613,15 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
     ctx.fillStyle = query.fill || 'rgba(255,255,255,0.4)';
     ctx.beginPath();
     path.forEach(function(pair) {
+      if (pair.length == 5) {
+        ctx.stroke();
+        ctx.beginPath();
+        var lineColor = pair[4];
+        if (lineColor.startsWith("#")){
+          lineColor = hexToRGBA(lineColor)
+        }
+        ctx.strokeStyle = lineColor        
+      }
       var px = precisePx(pair, z);
       ctx.lineTo(px[0], px[1]);
     });
@@ -625,13 +644,16 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
         var y = parseInt(px[1]);
 
         drawDirection(ctx, x, y, pathDirection);      
-      } else if (pair.length == 4) {
+      } else if (pair.length >= 4) {
         // the pair contains annoation details
         var px = precisePx(pair, z);
         var x = parseInt(px[0]);
         var y = parseInt(px[1]);
         var text = pair[2];
         var color = pair[3];
+        if (color.startsWith("#")){
+          color = hexToRGBA(color)
+        }
         drawAnnotation(ctx, x, y, text, color);
       }
     });
@@ -647,7 +669,7 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
 
     ctx.beginPath();
     ctx.arc(x, y, annotationSize / 3, 0, Math.PI * 2, false);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 1.0)';
     ctx.fill();
     
     ctx.font = annotationFont;
@@ -673,6 +695,20 @@ module.exports = function(options, repo, params, id, publicUrl, dataResolver) {
     ctx.fill();
     ctx.restore();
   }
+
+  function hexToRGBA(hex){
+    if(!hex.startsWith("#") || hex.length !== 7) {
+      return 'rgba(0,0,0,1.0)' // black
+    }
+
+    var hex = hex.replace('#', '');
+
+    var r = parseInt(hex.substring(0, 2), 16);
+    var g = parseInt(hex.substring(2, 4), 16);
+    var b = parseInt(hex.substring(4, 6), 16);
+        
+    return 'rgba(' + r + ', ' + g + ', ' + b + ',1.0)';
+  };
 
   var calcZForBBox = function(bbox, w, h, query) {
     var z = 25;
