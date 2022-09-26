@@ -106,7 +106,7 @@ public class GNAFImporter
                }
 
                double longitude = coords.getDouble(0);
-               double latitude = coords.getDouble(1);;
+               double latitude = coords.getDouble(1);
                if (longitude > 180)
                {
                   longitude = -360 + longitude;
@@ -126,6 +126,10 @@ public class GNAFImporter
                if (text2.startsWith("UNIT"))
                {
                   text = text2.replace("UNIT ", "U") + "/" + text;
+               }
+               else if (text2.startsWith("APARTMENT"))
+               {
+                  text = text2.replace("APARTMENT ", "A") + "/" + text;
                }
                else if (!text2.isEmpty())
                {
