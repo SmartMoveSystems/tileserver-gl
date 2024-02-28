@@ -27,6 +27,7 @@ import SphericalMercator from '@mapbox/sphericalmercator';
 import mlgl from '@maplibre/maplibre-gl-native';
 import MBTiles from '@mapbox/mbtiles';
 import polyline from '@mapbox/polyline';
+import geoViewport from '@mapbox/geo-viewport';
 import proj4 from 'proj4';
 import axios from 'axios';
 import {
@@ -200,12 +201,29 @@ const extractPathsFromQuery = (query, transformer) => {
           // Extract coordinates from coordinate pair
           const pairParts = pair.split(',');
           // Ensure we have two coordinates
-          if (pairParts.length === 2) {
+          if (pairParts.length >= 2) {
             const pair = parseCoordinates(pairParts, query, transformer);
 
             // Ensure coordinates could be parsed and skip them if not
             if (pair === null) {
               continue;
+            }
+
+            if (pairParts.length == 4) {
+              // extract annotation
+              var text = pairParts[2];
+              var color = pairParts[3].toLowerCase();
+              pair.push(text);
+              pair.push(color);
+            }
+            if (pairParts.length == 5) {
+              // extract annotation
+              var text = pairParts[2];
+              var color = pairParts[3].toLowerCase();
+              var lineColor = pairParts[4].toLowerCase();
+              pair.push(text);
+              pair.push(color);
+              pair.push(lineColor);
             }
 
             // Add the coordinate-pair to the current path if they are valid
@@ -377,6 +395,7 @@ const respondImage = (
   scale,
   format,
   res,
+  bounds,
   overlay = null,
   mode = 'tile',
 ) => {
@@ -521,6 +540,23 @@ const respondImage = (
           'Last-Modified': item.lastModified,
           'Content-Type': `image/${format}`,
         });
+
+          if (bounds && bounds.length == 4) {
+            res.set({
+              'Last-Modified': item.lastModified,
+              'Content-Type': `image/${format}`,
+              'Top-Latitude': bounds[3],
+              'Top-Longitude': bounds[0],
+              'Bottom-Latitude': bounds[1],
+              'Bottom-Longitude': bounds[2]
+            });
+          } else {
+            res.set({
+              'Last-Modified': item.lastModified,
+              'Content-Type': `image/${format}`
+            });
+          }
+
         return res.status(200).send(buffer);
       });
     });
@@ -583,9 +619,11 @@ export const serve_rendered = {
           z,
         );
 
+        const bounds = geoViewport.bounds([x,y], z, [w, h])
+
         // prettier-ignore
         return respondImage(
-          options, item, z, tileCenter[0], tileCenter[1], 0, 0, tileSize, tileSize, scale, format, res,
+          options, item, z, tileCenter[0], tileCenter[1], 0, 0, tileSize, tileSize, scale, format, res, bounds,
         );
       },
     );
@@ -647,9 +685,11 @@ export const serve_rendered = {
               z, x, y, bearing, pitch, w, h, scale, paths, markers, req.query,
             );
 
+            const bounds = geoViewport.bounds([x,y], z, [w, h])
+
             // prettier-ignore
             return respondImage(
-              options, item, z, x, y, bearing, pitch, w, h, scale, format, res, overlay, 'static',
+              options, item, z, x, y, bearing, pitch, w, h, scale, format, res, bounds, overlay, 'static',
             );
           } catch (e) {
             next(e);
@@ -709,16 +749,18 @@ export const serve_rendered = {
             z, x, y, bearing, pitch, w, h, scale, paths, markers, req.query,
           );
 
+          const bounds = geoViewport.bounds([x,y], z, [w, h])
+
           // prettier-ignore
           return respondImage(
-            options, item, z, x, y, bearing, pitch, w, h, scale, format, res, overlay, 'static',
+            options, item, z, x, y, bearing, pitch, w, h, scale, format, res, bounds, overlay, 'static',
           );
         } catch (e) {
           next(e);
         }
       };
 
-      const boundsPattern = util.format(
+      var boundsPattern = util.format(
         ':minx(%s),:miny(%s),:maxx(%s),:maxy(%s)',
         FLOAT_PATTERN,
         FLOAT_PATTERN,
@@ -822,9 +864,11 @@ export const serve_rendered = {
               z, x, y, bearing, pitch, w, h, scale, paths, markers, req.query,
             );
 
+            const bounds = geoViewport.bounds([x,y], z, [w, h])
+
             // prettier-ignore
             return respondImage(
-              options, item, z, x, y, bearing, pitch, w, h, scale, format, res, overlay, 'static',
+              options, item, z, x, y, bearing, pitch, w, h, scale, format, res, bounds, overlay, 'static',
             );
           } catch (e) {
             next(e);
@@ -832,6 +876,52 @@ export const serve_rendered = {
         },
       );
     }
+
+    var boundsPattern = 'bounds';
+
+    app.get(util.format(staticPattern, boundsPattern), function(req, res, next) {
+      var raw = req.params.raw;
+      var w = req.params.width | 0,
+          h = req.params.height | 0,
+          bearing = 0,
+          pitch = 0,
+          scale = getScale(req.params.scale),
+          format = req.params.format;
+
+      var transformer = raw ?
+        mercator.inverse.bind(mercator) : dataProjWGStoInternalWGS;
+
+      var path = extractPathFromQuery(req.query, transformer);
+      if (path.length < 2) {
+        return res.status(400).send('Invalid path');
+      }
+
+      var bbox = [Infinity, Infinity, -Infinity, -Infinity];
+      path.forEach(function(pair) {
+        bbox[0] = Math.min(bbox[0], pair[0]);
+        bbox[1] = Math.min(bbox[1], pair[1]);
+        bbox[2] = Math.max(bbox[2], pair[0]);
+        bbox[3] = Math.max(bbox[3], pair[1]);
+      });
+
+      var bbox_ = mercator.convert(bbox, '900913');
+      var center = mercator.inverse(
+        [(bbox_[0] + bbox_[2]) / 2, (bbox_[1] + bbox_[3]) / 2]
+      );
+
+      var z = calcZForBBox(bbox, w, h, req.query),
+          x = center[0],
+          y = center[1];
+
+      var bounds = geoViewport.bounds([x,y], z, [w, h])
+
+      var northWestBounds = [bounds[3], bounds[0]];
+      var southEastBounds = [bounds[1], bounds[2]];
+
+      var autoBounds = {northEastBounds, southWestBounds};
+
+      return res.json({ autoBounds })
+    });
 
     app.get('/(:tileSize(256|512)/)?:id.json', (req, res, next) => {
       const item = repo[req.params.id];
