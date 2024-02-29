@@ -599,6 +599,8 @@ export const serve_rendered = {
         const scale = getScale(req.params.scale);
         const format = req.params.format;
         const tileSize = parseInt(req.params.tileSize, 10) || 256;
+        const w = req.params.width | 0;
+        const h = req.params.height | 0;
 
         if (
           z < 0 ||
