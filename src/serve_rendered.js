@@ -875,53 +875,53 @@ export const serve_rendered = {
           }
         },
       );
-    }
 
-    var boundsPattern = 'bounds';
+      var boundsPattern = 'bounds';
 
-    app.get(util.format(staticPattern, boundsPattern), function(req, res, next) {
-      var raw = req.params.raw;
-      var w = req.params.width | 0,
-          h = req.params.height | 0,
-          bearing = 0,
-          pitch = 0,
-          scale = getScale(req.params.scale),
-          format = req.params.format;
+      app.get(util.format(staticPattern, boundsPattern), function(req, res, next) {
+          var raw = req.params.raw;
+          var w = req.params.width | 0,
+              h = req.params.height | 0,
+              bearing = 0,
+              pitch = 0,
+              scale = getScale(req.params.scale),
+              format = req.params.format;
 
-      var transformer = raw ?
-        mercator.inverse.bind(mercator) : dataProjWGStoInternalWGS;
+          var transformer = raw ?
+            mercator.inverse.bind(mercator) : dataProjWGStoInternalWGS;
 
-      var path = extractPathFromQuery(req.query, transformer);
-      if (path.length < 2) {
-        return res.status(400).send('Invalid path');
-      }
+          var path = extractPathFromQuery(req.query, transformer);
+          if (path.length < 2) {
+            return res.status(400).send('Invalid path');
+          }
 
-      var bbox = [Infinity, Infinity, -Infinity, -Infinity];
-      path.forEach(function(pair) {
-        bbox[0] = Math.min(bbox[0], pair[0]);
-        bbox[1] = Math.min(bbox[1], pair[1]);
-        bbox[2] = Math.max(bbox[2], pair[0]);
-        bbox[3] = Math.max(bbox[3], pair[1]);
+          var bbox = [Infinity, Infinity, -Infinity, -Infinity];
+          path.forEach(function(pair) {
+            bbox[0] = Math.min(bbox[0], pair[0]);
+            bbox[1] = Math.min(bbox[1], pair[1]);
+            bbox[2] = Math.max(bbox[2], pair[0]);
+            bbox[3] = Math.max(bbox[3], pair[1]);
+          });
+
+          var bbox_ = mercator.convert(bbox, '900913');
+          var center = mercator.inverse(
+            [(bbox_[0] + bbox_[2]) / 2, (bbox_[1] + bbox_[3]) / 2]
+          );
+
+          var z = calcZForBBox(bbox, w, h, req.query),
+              x = center[0],
+              y = center[1];
+
+          var bounds = geoViewport.bounds([x,y], z, [w, h])
+
+          var northWestBounds = [bounds[3], bounds[0]];
+          var southEastBounds = [bounds[1], bounds[2]];
+
+          var autoBounds = {northEastBounds, southWestBounds};
+
+          return res.json({ autoBounds })
       });
-
-      var bbox_ = mercator.convert(bbox, '900913');
-      var center = mercator.inverse(
-        [(bbox_[0] + bbox_[2]) / 2, (bbox_[1] + bbox_[3]) / 2]
-      );
-
-      var z = calcZForBBox(bbox, w, h, req.query),
-          x = center[0],
-          y = center[1];
-
-      var bounds = geoViewport.bounds([x,y], z, [w, h])
-
-      var northWestBounds = [bounds[3], bounds[0]];
-      var southEastBounds = [bounds[1], bounds[2]];
-
-      var autoBounds = {northEastBounds, southWestBounds};
-
-      return res.json({ autoBounds })
-    });
+    }
 
     app.get('/(:tileSize(256|512)/)?:id.json', (req, res, next) => {
       const item = repo[req.params.id];
