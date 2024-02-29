@@ -55,7 +55,7 @@ RUN npm config set maxsockets 1; \
     npm config set fetch-retries 5; \
     npm config set fetch-retry-mintimeout 100000; \
     npm config set fetch-retry-maxtimeout 600000; \
-    npm ci --omit=dev; \
+    npm i --omit=dev; \
     chown -R root:root /usr/src/app;
 
 FROM ubuntu:jammy AS final
