@@ -125,10 +125,20 @@ const drawPath = (ctx, path, query, pathQuery, z) => {
 
   ctx.beginPath();
 
+  let pathWidth = 3;
+  const pathHasWidth = splitPaths.filter((x) => x.startsWith('width')).length > 0;
+  if (query.width !== undefined || pathHasWidth) {
+    // Get line width from query
+    if ('width' in query) {
+      pathWidth = Number(query.width);
+    }
+  }
+
   // Transform coordinates to pixel on canvas and draw lines between points
   for (const pair of path) {
     if (pair.length == 5) {
       ctx.stroke();
+      ctx.lineWidth = pathWidth;
       ctx.beginPath();
       var lineColor = pair[4];
       if (lineColor.startsWith("#")){
