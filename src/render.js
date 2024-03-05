@@ -173,8 +173,6 @@ const drawPath = (ctx, path, query, pathQuery, z) => {
   }
 
   // Get line width from query and fall back to 1 if not provided
-  const pathHasWidth =
-    splitPaths.filter((x) => x.startsWith('width')).length > 0;
   if (query.width !== undefined || pathHasWidth) {
     let lineWidth = 1;
     // Get line width from query
