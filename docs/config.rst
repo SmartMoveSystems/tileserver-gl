@@ -17,15 +17,20 @@ Example:
         "icons": "icons",
         "styles": "styles",
         "mbtiles": "data",
-        "pmtiles": "data"
+        "pmtiles": "data",
+        "files": "files"
       },
       "domains": [
         "localhost:8080",
         "127.0.0.1:8080"
       ],
-      "formatQuality": {
-        "jpeg": 80,
-        "webp": 90
+      "formatOptions": {
+        "jpeg": {
+          "quality": 80
+        },
+        "webp": {
+          "quality": 90
+        }
       },
       "maxScaleFactor": 3,
       "maxSize": 2048,
@@ -52,6 +57,9 @@ Example:
         "tilejson": {
           "format": "webp"
         }
+      },
+      "remote": {
+        "style": "https://demotiles.maplibre.org/style.json"
       }
     },
     "data": {
@@ -85,10 +93,24 @@ Path to the html (relative to ``root`` path) to use as a front page.
 Use ``true`` (or nothing) to serve the default TileServer GL front page with list of styles and data.
 Use ``false`` to disable the front page altogether (404).
 
-``formatQuality``
+``formatOptions``
 -----------------
 
-Quality of the compression of individual image formats. [0-100]
+You can use this to specify options for the generation of images in the supported file formats.
+For WebP, the only supported option is ``quality`` [0-100].
+For JPEG, the only supported options are ``quality`` [0-100] and ``progressive`` [true, false]. 
+For PNG, the full set of options `exposed by the sharp library <https://sharp.pixelplumbing.com/api-output#png>`_ is available, except ``force`` and ``colours`` (use ``colors``). If not set, their values are the defaults from ``sharp``.
+
+For example::
+
+  "formatOptions": {
+    "png": {
+      "palette": true,
+      "colors": 4
+    }
+  }
+
+Note: ``formatOptions`` replaced the ``formatQuality`` option in previous versions of TileServer GL. 
 
 ``maxScaleFactor``
 -----------
@@ -190,7 +212,7 @@ Not used by default.
 
 Each item in this object defines one style (map). It can have the following options:
 
-* ``style`` -- name of the style json file [required]
+* ``style`` -- name of the style json file or url of a remote hosted style [required]
 * ``serve_rendered`` -- whether to render the raster tiles for this style or not
 * ``serve_data`` -- whether to allow access to the original tiles, sprites and required glyphs
 * ``tilejson`` -- properties to add to the TileJSON created for the raster data
@@ -219,8 +241,48 @@ For example::
     }
   }
 
-
 The data source does not need to be specified here unless you explicitly want to serve the raw data.
+
+Data Source Options
+--------------
+
+Within the top-level ``data`` object in your configuration, each defined data source (e.g., `terrain`, `sparse_vector_tiles`) can have several key properties. These properties define how *tileserver-gl* processes and serves the tiles from that source.
+
+For example::
+
+  "data": {
+    "terrain": {
+      "mbtiles": "terrain1.mbtiles",
+      "encoding": "mapbox",
+      "tileSize": 512,
+      "sparse": true
+    },
+    "sparse_vector_tiles": {
+      "pmtiles": "custom_osm.pmtiles",
+      "sparse": true
+    }
+  }
+
+Here are the available options for each data source:
+
+``encoding`` (string)
+    Applicable to terrain tiles. Configures the expected encoding of the terrain data.
+    Setting this to ``mapbox`` or ``terrarium`` enables a terrain preview mode and the ``elevation`` API for the ``data`` endpoint (if applicable to the source).
+
+``tileSize`` (integer)
+    Specifies the expected pixel dimensions of the tiles within this data source.
+    This option is crucial if your source data uses 512x512 pixel tiles, as *tileserver-gl* typically assumes 256x256 by default.
+    Allowed values: ``256``, ``512``.
+    Default: ``256``.
+
+``sparse`` (boolean)
+    Controls the HTTP status code returned by *tileserver-gl* when a requested tile is not found in the source.
+    When ``true``, a ``410 Gone`` status is returned for missing tiles. This behaviour is beneficial for clients like MapLibre-GL-JS or MapLibre-Native, as it signals them to attempt loading tiles from lower zoom levels (overzooming) when a higher-zoom tile is explicitly missing.
+    When ``false`` (default), *tileserver-gl* returns a ``204 No Content`` for missing tiles, which typically signals the client to stop trying to load a substitute.
+    Default: ``false``.
+
+.. note::
+    These configuration options will be overridden by metadata in the MBTiles or PMTiles file. if corresponding properties exist in the file's metadata, you do not need to specify them in the data configuration.
 
 Referencing local files from style JSON
 =======================================
@@ -264,7 +326,7 @@ For example::
     "source3": {
       "url": "pmtiles://https://foo.lan/source3.pmtiles",
       "type": "vector"
-    },
+    }
   }
 
 Alternatively, you can use ``pmtiles://{source2}`` to reference existing data object from the config.

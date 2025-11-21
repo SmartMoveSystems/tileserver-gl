@@ -25,7 +25,7 @@ describe('Styles', function () {
           expect(res.body.sources).to.be.a('object');
           expect(res.body.glyphs).to.be.a('string');
           expect(res.body.sprite).to.be.a('string');
-          expect(res.body.sprite).to.be.equal('/test/styles/test-style/sprite');
+          expect(res.body.sprite).to.contain('/test/styles/test-style/sprite');
           expect(res.body.layers).to.be.a('array');
         })
         .end(done);
@@ -40,6 +40,16 @@ describe('Styles', function () {
     testIs('/styles/' + prefix + '/sprite@2x.json', /application\/json/);
     testIs('/styles/' + prefix + '/sprite.png', /image\/png/);
     testIs('/styles/' + prefix + '/sprite@2x.png', /image\/png/);
+  });
+
+  describe('/styles/' + prefix + '/sprite/default[@2x].{format}', function () {
+    testIs('/styles/' + prefix + '/sprite/default.json', /application\/json/);
+    testIs(
+      '/styles/' + prefix + '/sprite/default@2x.json',
+      /application\/json/,
+    );
+    testIs('/styles/' + prefix + '/sprite/default.png', /image\/png/);
+    testIs('/styles/' + prefix + '/sprite/default@2x.png', /image\/png/);
   });
 });
 
